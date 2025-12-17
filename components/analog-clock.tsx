@@ -78,26 +78,48 @@ export default function AnalogClock() {
     return minutes * 6
   }
 
-  // Get current active activities
-  function getCurrentActivities(): Activity[] {
+  // Get activities for the next hour
+  function getNextHourActivities(): Array<Activity & { startAngle: number; endAngle: number }> {
     const now = time
     const currentMinutes = now.getHours() * 60 + now.getMinutes()
+    const oneHourLater = currentMinutes + 60
 
-    return activities.filter((activity) => {
-      const [startH, startM] = activity.startTime.split(":").map(Number)
-      const [endH, endM] = activity.endTime.split(":").map(Number)
-      const startMinutes = startH * 60 + startM
-      const endMinutes = endH * 60 + endM
+    return activities
+      .map((activity) => {
+        const [startH, startM] = activity.startTime.split(":").map(Number)
+        const [endH, endM] = activity.endTime.split(":").map(Number)
+        let startMinutes = startH * 60 + startM
+        let endMinutes = endH * 60 + endM
 
-      // Handle activities that span midnight
-      if (endMinutes < startMinutes) {
-        return currentMinutes >= startMinutes || currentMinutes < endMinutes
-      }
-      return currentMinutes >= startMinutes && currentMinutes < endMinutes
-    })
+        // Handle midnight wraparound
+        if (endMinutes < startMinutes) {
+          endMinutes += 24 * 60
+        }
+        if (startMinutes < currentMinutes && endMinutes < currentMinutes) {
+          startMinutes += 24 * 60
+          endMinutes += 24 * 60
+        }
+
+        // Check if activity overlaps with next hour window
+        if (endMinutes <= currentMinutes || startMinutes >= oneHourLater) {
+          return null
+        }
+
+        // Calculate visible portion within the next hour
+        const visibleStart = Math.max(startMinutes, currentMinutes)
+        const visibleEnd = Math.min(endMinutes, oneHourLater)
+
+        // Convert to angles relative to current minute hand position
+        // 0 degrees = current minute hand position, 360 degrees = one hour later
+        const startAngle = ((visibleStart - currentMinutes) / 60) * 360
+        const endAngle = ((visibleEnd - currentMinutes) / 60) * 360
+
+        return { ...activity, startAngle, endAngle }
+      })
+      .filter(Boolean) as Array<Activity & { startAngle: number; endAngle: number }>
   }
 
-  const currentActivities = getCurrentActivities()
+  const nextHourActivities = getNextHourActivities()
 
   return (
     <div className="flex flex-col items-center gap-8 w-full max-w-4xl">
@@ -115,35 +137,23 @@ export default function AnalogClock() {
             className="text-foreground"
           />
 
-          {currentActivities.map((activity) => {
-            console.log(
-              "[v0] Drawing activity:",
-              activity.name,
-              "from",
-              minuteAngle,
-              "to",
-              timeToAngle(activity.endTime),
-            )
+          {nextHourActivities.map((activity) => {
+            // Current minute hand is at 0°, one hour later is at 360°
+            // Adjust to SVG coordinates (0° at top = -90°)
+            const currentAngle = minuteAngle - 90
+            const startAngle = currentAngle + activity.startAngle
+            const endAngle = currentAngle + activity.endAngle
 
-            // Current time angle (same as minute hand)
-            const currentAngle = minuteAngle - 90 // Adjust to SVG coordinates (0° at top)
-            const endAngle = timeToAngle(activity.endTime) - 90
-
-            // Calculate arc path
-            const radius = 170 // Slightly smaller than clock face
+            const radius = 170
             const centerX = 200
             const centerY = 200
 
-            // Calculate the angle span from current position to end
-            let angleSpan = endAngle - currentAngle
-            // Handle wrap-around past midnight/12 o'clock
-            if (angleSpan < 0) angleSpan += 360
-
-            const startX = centerX + radius * Math.cos((currentAngle * Math.PI) / 180)
-            const startY = centerY + radius * Math.sin((currentAngle * Math.PI) / 180)
+            const startX = centerX + radius * Math.cos((startAngle * Math.PI) / 180)
+            const startY = centerY + radius * Math.sin((startAngle * Math.PI) / 180)
             const endX = centerX + radius * Math.cos((endAngle * Math.PI) / 180)
             const endY = centerY + radius * Math.sin((endAngle * Math.PI) / 180)
 
+            const angleSpan = activity.endAngle - activity.startAngle
             const largeArcFlag = angleSpan > 180 ? 1 : 0
 
             return (
@@ -264,10 +274,9 @@ export default function AnalogClock() {
         </Button>
       </div>
 
-      {/* Current activities display */}
-      {currentActivities.length > 0 && (
+      {nextHourActivities.length > 0 && (
         <div className="flex flex-wrap gap-3 justify-center">
-          {currentActivities.map((activity) => (
+          {nextHourActivities.map((activity) => (
             <div
               key={activity.id}
               className="flex items-center gap-2 px-4 py-2 rounded-full shadow-sm"
