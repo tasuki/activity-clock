@@ -68,14 +68,14 @@ export default function AnalogClock() {
   const hours = time.getHours() % 12
 
   const secondAngle = seconds * 6 // 360/60
-  const minuteAngle = minutes * 6 + seconds * 0.1 // Smooth minute hand
+  const minuteAngle = minutes * 6 // Simplified to only use minutes for the minute hand position
   const hourAngle = hours * 30 + minutes * 0.5 // Smooth hour hand
 
   // Convert time string to angle (0-360 degrees, starting from 12 o'clock)
   function timeToAngle(timeStr: string): number {
     const [hours, minutes] = timeStr.split(":").map(Number)
-    const totalMinutes = (hours % 12) * 60 + minutes
-    return (totalMinutes / 720) * 360 // 720 minutes in 12 hours
+    // Minute hand position: 6 degrees per minute
+    return minutes * 6
   }
 
   // Get current active activities
@@ -104,36 +104,6 @@ export default function AnalogClock() {
       <div className="relative w-full aspect-square max-w-2xl">
         {/* SVG Clock */}
         <svg viewBox="0 0 400 400" className="w-full h-full">
-          {/* Activity backgrounds */}
-          {activities.map((activity) => {
-            const startAngle = timeToAngle(activity.startTime) - 90
-            const endAngle = timeToAngle(activity.endTime) - 90
-
-            // Calculate arc path
-            const radius = 180
-            const centerX = 200
-            const centerY = 200
-
-            let angle = endAngle - startAngle
-            if (angle < 0) angle += 360
-
-            const startX = centerX + radius * Math.cos((startAngle * Math.PI) / 180)
-            const startY = centerY + radius * Math.sin((startAngle * Math.PI) / 180)
-            const endX = centerX + radius * Math.cos((endAngle * Math.PI) / 180)
-            const endY = centerY + radius * Math.sin((endAngle * Math.PI) / 180)
-
-            const largeArcFlag = angle > 180 ? 1 : 0
-
-            return (
-              <path
-                key={activity.id}
-                d={`M ${centerX} ${centerY} L ${startX} ${startY} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endX} ${endY} Z`}
-                fill={hexToPastel(activity.color)}
-                opacity="0.5"
-              />
-            )
-          })}
-
           {/* Clock face */}
           <circle
             cx="200"
@@ -144,6 +114,47 @@ export default function AnalogClock() {
             strokeWidth="4"
             className="text-foreground"
           />
+
+          {currentActivities.map((activity) => {
+            console.log(
+              "[v0] Drawing activity:",
+              activity.name,
+              "from",
+              minuteAngle,
+              "to",
+              timeToAngle(activity.endTime),
+            )
+
+            // Current time angle (same as minute hand)
+            const currentAngle = minuteAngle - 90 // Adjust to SVG coordinates (0° at top)
+            const endAngle = timeToAngle(activity.endTime) - 90
+
+            // Calculate arc path
+            const radius = 170 // Slightly smaller than clock face
+            const centerX = 200
+            const centerY = 200
+
+            // Calculate the angle span from current position to end
+            let angleSpan = endAngle - currentAngle
+            // Handle wrap-around past midnight/12 o'clock
+            if (angleSpan < 0) angleSpan += 360
+
+            const startX = centerX + radius * Math.cos((currentAngle * Math.PI) / 180)
+            const startY = centerY + radius * Math.sin((currentAngle * Math.PI) / 180)
+            const endX = centerX + radius * Math.cos((endAngle * Math.PI) / 180)
+            const endY = centerY + radius * Math.sin((endAngle * Math.PI) / 180)
+
+            const largeArcFlag = angleSpan > 180 ? 1 : 0
+
+            return (
+              <path
+                key={activity.id}
+                d={`M ${centerX} ${centerY} L ${startX} ${startY} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endX} ${endY} Z`}
+                fill={hexToPastel(activity.color)}
+                opacity="0.5"
+              />
+            )
+          })}
 
           {/* Hour markers and numbers */}
           {[...Array(12)].map((_, i) => {
@@ -209,7 +220,6 @@ export default function AnalogClock() {
             stroke="currentColor"
             strokeWidth="8"
             strokeLinecap="round"
-            transform={`rotate(${hourAngle} 200 200)`}
             className="text-foreground transition-transform duration-300 ease-linear"
             style={{ transform: `rotate(${hourAngle}deg)`, transformOrigin: "200px 200px" }}
           />
