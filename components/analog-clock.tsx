@@ -42,7 +42,7 @@ function hexToPastel(hex: string): string {
 }
 
 export default function AnalogClock() {
-  const [time, setTime] = useState(new Date())
+  const [time, setTime] = useState<Date | null>(null)
   const [showManager, setShowManager] = useState(false)
   const [activities, setActivities] = useState<Activity[]>([])
 
@@ -56,11 +56,32 @@ export default function AnalogClock() {
 
   // Update time
   useEffect(() => {
+    setTime(new Date())
     const interval = setInterval(() => {
       setTime(new Date())
     }, 1000)
     return () => clearInterval(interval)
   }, [])
+
+  if (!time) {
+    return (
+      <div className="flex flex-col items-center gap-8 w-full max-w-4xl">
+        <div className="relative w-full aspect-square max-w-2xl">
+          <svg viewBox="0 0 400 400" className="w-full h-full">
+            <circle
+              cx="200"
+              cy="200"
+              r="190"
+              fill="white"
+              stroke="currentColor"
+              strokeWidth="4"
+              className="text-foreground"
+            />
+          </svg>
+        </div>
+      </div>
+    )
+  }
 
   // Calculate hand angles
   const seconds = time.getSeconds()
