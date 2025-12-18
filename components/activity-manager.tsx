@@ -169,28 +169,36 @@ export default function ActivityManager({ open, onOpenChange, activities, onActi
               </p>
             ) : (
               <div className="space-y-2">
-                {activities.map((activity) => (
-                  <div
-                    key={activity.id}
-                    className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="w-6 h-6 rounded-full flex-shrink-0" style={{ backgroundColor: activity.color }} />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{activity.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {activity.startTime} - {activity.endTime}
-                      </p>
+                {[...activities]
+                  .sort((a, b) => {
+                    const timeA = a.startTime.split(":").map(Number)
+                    const timeB = b.startTime.split(":").map(Number)
+                    const minutesA = timeA[0] * 60 + timeA[1]
+                    const minutesB = timeB[0] * 60 + timeB[1]
+                    return minutesA - minutesB
+                  })
+                  .map((activity) => (
+                    <div
+                      key={activity.id}
+                      className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="w-6 h-6 rounded-full flex-shrink-0" style={{ backgroundColor: activity.color }} />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{activity.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {activity.startTime} - {activity.endTime}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleEdit(activity)}>
+                          Edit
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleDelete(activity.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => handleEdit(activity)}>
-                        Edit
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => handleDelete(activity.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             )}
           </div>

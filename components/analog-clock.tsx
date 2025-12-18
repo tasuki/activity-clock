@@ -68,7 +68,7 @@ export default function AnalogClock() {
   const hours = time.getHours() % 12
 
   const secondAngle = seconds * 6 // 360/60
-  const minuteAngle = minutes * 6 // Simplified to only use minutes for the minute hand position
+  const minuteAngle = minutes * 6 + seconds * 0.1 // 6 degrees per minute + 0.1 degrees per second
   const hourAngle = hours * 30 + minutes * 0.5 // Smooth hour hand
 
   // Convert time string to angle (0-360 degrees, starting from 12 o'clock)
