@@ -101,8 +101,7 @@ export default function AnalogClock() {
 
   // Get activities for the next hour
   function getNextHourActivities(): Array<Activity & { startAngle: number; endAngle: number }> {
-    const now = time
-    const currentMinutes = now.getHours() * 60 + now.getMinutes()
+    const currentMinutes = time.getHours() * 60 + time.getMinutes() + time.getSeconds() / 60
     const oneHourLater = currentMinutes + 60
 
     return activities
