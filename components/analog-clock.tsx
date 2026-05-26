@@ -167,23 +167,94 @@ export default function AnalogClock() {
             const radius = 170
             const centerX = 200
             const centerY = 200
-
-            const startX = centerX + radius * Math.cos((startAngle * Math.PI) / 180)
-            const startY = centerY + radius * Math.sin((startAngle * Math.PI) / 180)
-            const endX = centerX + radius * Math.cos((endAngle * Math.PI) / 180)
-            const endY = centerY + radius * Math.sin((endAngle * Math.PI) / 180)
-
-            const angleSpan = activity.endAngle - activity.startAngle
-            const largeArcFlag = angleSpan > 180 ? 1 : 0
-
-            return (
-              <path
-                key={activity.id}
-                d={`M ${centerX} ${centerY} L ${startX} ${startY} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endX} ${endY} Z`}
-                fill={hexToPastel(activity.color)}
-                opacity="0.5"
-              />
-            )
+            
+            // Fade zone is last 10 minutes = 60 degrees
+            const fadeZoneDegrees = 60
+            const fadeStartAngle = activity.startAngle
+            const activitySpan = activity.endAngle - activity.startAngle
+            
+            // If activity is longer than fade zone, draw solid part + fade part
+            // Otherwise, the whole thing fades
+            const hasSolidPart = activitySpan > fadeZoneDegrees
+            
+            const paths = []
+            
+            if (hasSolidPart) {
+              // Solid part: from start to (end - fadeZone)
+              const solidEndAngle = currentAngle + activity.endAngle - fadeZoneDegrees
+              const solidStartAngle = currentAngle + activity.startAngle
+              
+              const solidStartX = centerX + radius * Math.cos((solidStartAngle * Math.PI) / 180)
+              const solidStartY = centerY + radius * Math.sin((solidStartAngle * Math.PI) / 180)
+              const solidEndX = centerX + radius * Math.cos((solidEndAngle * Math.PI) / 180)
+              const solidEndY = centerY + radius * Math.sin((solidEndAngle * Math.PI) / 180)
+              
+              const solidSpan = activitySpan - fadeZoneDegrees
+              const solidLargeArc = solidSpan > 180 ? 1 : 0
+              
+              paths.push(
+                <path
+                  key={`${activity.id}-solid`}
+                  d={`M ${centerX} ${centerY} L ${solidStartX} ${solidStartY} A ${radius} ${radius} 0 ${solidLargeArc} 1 ${solidEndX} ${solidEndY} Z`}
+                  fill={hexToPastel(activity.color)}
+                  opacity="0.5"
+                />
+              )
+              
+              // Fade part: last fadeZoneDegrees before minute hand
+              const fadeStartAngleSvg = currentAngle + activity.endAngle - fadeZoneDegrees
+              const fadeEndAngleSvg = currentAngle + activity.endAngle
+              
+              // Draw fade segments
+              const fadeSegments = 10
+              for (let i = 0; i < fadeSegments; i++) {
+                const segStart = fadeStartAngleSvg + (i / fadeSegments) * fadeZoneDegrees
+                const segEnd = fadeStartAngleSvg + ((i + 1) / fadeSegments) * fadeZoneDegrees
+                const opacity = 0.5 * (1 - (i + 1) / fadeSegments)
+                
+                const segStartX = centerX + radius * Math.cos((segStart * Math.PI) / 180)
+                const segStartY = centerY + radius * Math.sin((segStart * Math.PI) / 180)
+                const segEndX = centerX + radius * Math.cos((segEnd * Math.PI) / 180)
+                const segEndY = centerY + radius * Math.sin((segEnd * Math.PI) / 180)
+                
+                paths.push(
+                  <path
+                    key={`${activity.id}-fade-${i}`}
+                    d={`M ${centerX} ${centerY} L ${segStartX} ${segStartY} A ${radius} ${radius} 0 0 1 ${segEndX} ${segEndY} Z`}
+                    fill={hexToPastel(activity.color)}
+                    opacity={opacity}
+                  />
+                )
+              }
+            } else {
+              // Whole activity is within fade zone - fade the entire thing
+              const fadeSegments = 10
+              for (let i = 0; i < fadeSegments; i++) {
+                const segStartRatio = i / fadeSegments
+                const segEndRatio = (i + 1) / fadeSegments
+                const segStart = currentAngle + activity.startAngle + segStartRatio * activitySpan
+                const segEnd = currentAngle + activity.startAngle + segEndRatio * activitySpan
+                // Fade based on position within the 60-degree zone before minute hand
+                const distFromMinuteHand = activity.endAngle - segEndRatio * activitySpan
+                const opacity = 0.5 * Math.min(1, distFromMinuteHand / fadeZoneDegrees)
+                
+                const segStartX = centerX + radius * Math.cos((segStart * Math.PI) / 180)
+                const segStartY = centerY + radius * Math.sin((segStart * Math.PI) / 180)
+                const segEndX = centerX + radius * Math.cos((segEnd * Math.PI) / 180)
+                const segEndY = centerY + radius * Math.sin((segEnd * Math.PI) / 180)
+                
+                paths.push(
+                  <path
+                    key={`${activity.id}-fade-${i}`}
+                    d={`M ${centerX} ${centerY} L ${segStartX} ${segStartY} A ${radius} ${radius} 0 0 1 ${segEndX} ${segEndY} Z`}
+                    fill={hexToPastel(activity.color)}
+                    opacity={opacity}
+                  />
+                )
+              }
+            }
+            
+            return <g key={activity.id}>{paths}</g>
           })}
 
           {/* Hour markers and numbers */}
